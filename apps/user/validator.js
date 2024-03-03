@@ -1,6 +1,28 @@
 const validator = require('validator');
 
-const validateRegisterReqBody = (reqBody) => {
+const validateRequiredFieldsWithoutCustomization = (requiredFields, reqBody) => {
+    const reqBodyValidationResult = {
+        isValid: true,
+        result: {}
+    };
+
+    let validRequiredFieldsCount = 0;
+
+    requiredFields.forEach((key) => {
+        const fieldValidationResult = userValidator(key, reqBody[key]);
+        if (fieldValidationResult.isValid) {
+            validRequiredFieldsCount++;
+        } else {
+            reqBodyValidationResult.result[key] = fieldValidationResult.message;
+        }
+    });
+
+    reqBodyValidationResult.isValid = validRequiredFieldsCount === requiredFields.length;
+
+    return reqBodyValidationResult;
+};
+
+const validateSignUpReqBody = (reqBody) => {
     const requiredFields = [
         'username',
         'first_name',
@@ -11,6 +33,15 @@ const validateRegisterReqBody = (reqBody) => {
         'date_of_birth'
     ];
 
+    return validateRequiredFieldsWithoutCustomization(requiredFields, reqBody);
+};
+
+const validateSignInReqBody = (reqBody) => {
+    const requiredFields = [
+        'identifier',
+        'password'
+    ];
+
     const reqBodyValidationResult = {
         isValid: true,
         result: {}
@@ -19,15 +50,26 @@ const validateRegisterReqBody = (reqBody) => {
     let validRequiredFieldsCount = 0;
 
     requiredFields.forEach((key) => {
-        if (Object.hasOwnProperty.call(reqBody, key)) {
-            const fieldValidationResult = userValidator(key, reqBody[key]);
-            if (fieldValidationResult.isValid) {
+        if (key === 'identifier') {
+            // For 'identifier' field, user can send either username, email, or phone number for login process
+            const fieldsValidationResult = [
+                userValidator('username', reqBody[key]),
+                userValidator('email', reqBody[key]),
+                userValidator('phone_number', reqBody[key]),
+            ];
+
+            if (fieldsValidationResult.filter((r) => r.isValid).length > 0) {
                 validRequiredFieldsCount++;
             } else {
-                reqBodyValidationResult.result[key] = fieldValidationResult.message;
+                reqBodyValidationResult.result[key] = `Field '${key}' is invalid, must be either a valid username, email, or phone number.`;
             }
-        } else {
-            reqBodyValidationResult.result[key] = `Field '${key}' is not found, it is required.`;
+        } else if (key === 'password') {
+            const isValid = reqBody[key] != undefined;
+            if (isValid) {
+                validRequiredFieldsCount++;
+            } else {
+                reqBodyValidationResult.result[key] = `Field '${key} is invalid, it is required.'`;
+            }
         }
     });
 
@@ -36,7 +78,25 @@ const validateRegisterReqBody = (reqBody) => {
     return reqBodyValidationResult;
 };
 
+const validateEditProfileReqBody = (reqBody) => {
+    const requiredFields = [
+        'first_name',
+        'last_name',
+        'date_of_birth'
+    ];
+
+    return validateRequiredFieldsWithoutCustomization(requiredFields, reqBody);
+};
+
 const userValidator = (field, value) => {
+    if (value == undefined) {
+        return {
+            isValid: false,
+            field,
+            message: `Field '${field}' is required.`
+        };
+    }
+
     if (field === 'username') {
         const isValid = validator.isLength(value, { max: 255 }) && validator.isAlphanumeric(value);
         const message = isValid ? null : "Field 'username' is invalid, must be alphanumeric and 255 characters at most.";
@@ -99,5 +159,7 @@ const userValidator = (field, value) => {
 };
 
 module.exports = {
-    validateRegisterReqBody
+    validateSignUpReqBody,
+    validateSignInReqBody,
+    validateEditProfileReqBody
 };

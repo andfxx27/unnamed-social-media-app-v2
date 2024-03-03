@@ -8,7 +8,14 @@ const fileWhitelist = [
     'image/jpg'
 ];
 
-const userAvatarStorage = multer.diskStorage({
+const generateUserAvatarFileName = (file) => {
+    const splitFileOriginalName = file.originalname.split('.');
+    const extension = splitFileOriginalName[splitFileOriginalName.length - 1];
+    const finalFileName = `avatar.${extension}`;
+    return finalFileName;
+};
+
+const userSignUpFileUploadStorage = multer.diskStorage({
     destination: async (req, file, callback) => {
         // Generate user id here for later use
         const userId = uuid.v4();
@@ -24,16 +31,25 @@ const userAvatarStorage = multer.diskStorage({
         callback(null, filePath);
     },
     filename: (req, file, callback) => {
-        const splitFileOriginalName = file.originalname.split('.');
-        const extension = splitFileOriginalName[splitFileOriginalName.length - 1];
-        const finalFileName = `avatar.${extension}`;
-
-        callback(null, finalFileName);
+        callback(null, generateUserAvatarFileName(file));
     }
 });
 
-const userAvatarFileUploadMiddleware = multer({
-    storage: userAvatarStorage,
+const userEditProfileFileUploadStorage = multer.memoryStorage();
+
+const userSignUpFileUploadMiddleware = multer({
+    storage: userSignUpFileUploadStorage,
+    fileFilter: (req, file, cb) => {
+        if (!fileWhitelist.includes(file.mimetype)) {
+            return cb(new Error('Client error, file is not allowed'));
+        }
+
+        cb(null, true);
+    }
+});
+
+const userEditProfileFileUploadMiddleware = multer({
+    storage: userEditProfileFileUploadStorage,
     fileFilter: (req, file, cb) => {
         if (!fileWhitelist.includes(file.mimetype)) {
             return cb(new Error('Client error, file is not allowed'));
@@ -44,5 +60,6 @@ const userAvatarFileUploadMiddleware = multer({
 });
 
 module.exports = {
-    userAvatarFileUploadMiddleware
+    userSignUpFileUploadMiddleware,
+    userEditProfileFileUploadMiddleware
 };
