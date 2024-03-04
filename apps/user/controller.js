@@ -249,7 +249,24 @@ const editProfile = async (req, res, next) => {
                 .json(respBody);
         }
 
-        // Handle uploaded file buffer
+        // Do edit profile logic
+        const taskTag = 'editProfile';
+        await db.task(taskTag, async (t) => {
+            await t.none(
+                `UPDATE public.user SET first_name = $1, last_name = $2, date_of_birth = $3`,
+                [
+                    reqBody.first_name,
+                    reqBody.last_name,
+                    reqBody.date_of_birth
+                ]
+            );
+
+            // Handle uploaded file buffer
+            const filePath = `uploads/user/${decodedJwt.user_id}/avatar/avatar.jpg`;
+            await fs.promises.writeFile(filePath, file.buffer);
+
+            return appConstants.SUCCESS;
+        });
 
         return res
             .status(respBody.http_status_code)
