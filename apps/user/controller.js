@@ -158,11 +158,10 @@ const signIn = async (req, res, next) => {
 
         // Do sign in logic
         const taskTag = 'signIn';
-
         const result = await db.tx(taskTag, async (t) => {
             // Check if a user with provided credential is already registered
             const user = await t.oneOrNone(
-                'SELECT * FROM public.user WHERE username = $1 OR email = $2 OR phone_number = $3',
+                `SELECT * FROM public.user WHERE username = $1 OR email = $2 OR phone_number = $3`,
                 [
                     reqBody.identifier,
                     reqBody.identifier,
@@ -205,6 +204,47 @@ const signIn = async (req, res, next) => {
             logger.info(`Task ${taskTag} incomplete, user with identifier of ${reqBody.identifier} might not be registered or wrong password is entered`);
         } else {
             logger.info(`Task ${taskTag} complete, success sign in for user with identifier of ${reqBody.identifier}`);
+        }
+
+        return res
+            .status(respBody.http_status_code)
+            .json(respBody);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+/**
+ * Function to get user profile
+ * @param {express.Request} req 
+ * @param {express.Response} res 
+ * @param {express.NextFunction} next 
+ * @returns
+ */
+const getProfile = async (req, res, next) => {
+    try {
+        // Prepare default response body
+        const respBody = {
+            message: 'Success get profile',
+            http_status_code: httpStatusCodes.StatusCodes.OK,
+            application_specific_status_code: appConstants.SUCCESS,
+            result: null
+        };
+
+        // Do get profile logic
+        const taskTag = 'getProfile';
+        const user = await db.oneOrNone(
+            `SELECT * FROM public.user WHERE user_id = $1`,
+            req.params.userId
+        );
+        if (user != null) {
+            delete user.password;
+
+            respBody.result = {
+                user: {
+                    ...user
+                }
+            };
         }
 
         return res
@@ -279,5 +319,6 @@ const editProfile = async (req, res, next) => {
 module.exports = {
     signUp,
     signIn,
+    getProfile,
     editProfile
 }; 
