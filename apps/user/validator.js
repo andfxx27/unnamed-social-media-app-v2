@@ -1,26 +1,6 @@
 const validator = require('validator');
 
-const validateRequiredFieldsWithoutCustomization = (requiredFields, reqBody) => {
-    const reqBodyValidationResult = {
-        isValid: true,
-        result: {}
-    };
-
-    let validRequiredFieldsCount = 0;
-
-    requiredFields.forEach((key) => {
-        const fieldValidationResult = userValidator(key, reqBody[key]);
-        if (fieldValidationResult.isValid) {
-            validRequiredFieldsCount++;
-        } else {
-            reqBodyValidationResult.result[key] = fieldValidationResult.message;
-        }
-    });
-
-    reqBodyValidationResult.isValid = validRequiredFieldsCount === requiredFields.length;
-
-    return reqBodyValidationResult;
-};
+const appValidator = require('./../validator');
 
 const validateSignUpReqBody = (reqBody) => {
     const requiredFields = [
@@ -33,7 +13,7 @@ const validateSignUpReqBody = (reqBody) => {
         'date_of_birth'
     ];
 
-    return validateRequiredFieldsWithoutCustomization(requiredFields, reqBody);
+    return appValidator.validateRequiredFieldsWithoutCustomization(userValidator, requiredFields, reqBody);
 };
 
 const validateSignInReqBody = (reqBody) => {
@@ -78,6 +58,22 @@ const validateSignInReqBody = (reqBody) => {
     return reqBodyValidationResult;
 };
 
+const validateFollowReqBody = (reqBody) => {
+    const requiredFields = [
+        'following_id'
+    ];
+
+    return appValidator.validateRequiredFieldsWithoutCustomization(userValidator, requiredFields, reqBody);
+};
+
+const validateUnfollowReqBody = (reqBody) => {
+    const requiredFields = [
+        'following_id'
+    ];
+
+    return appValidator.validateRequiredFieldsWithoutCustomization(userValidator, requiredFields, reqBody);
+};
+
 const validateEditProfileReqBody = (reqBody) => {
     const requiredFields = [
         'first_name',
@@ -85,7 +81,7 @@ const validateEditProfileReqBody = (reqBody) => {
         'date_of_birth'
     ];
 
-    return validateRequiredFieldsWithoutCustomization(requiredFields, reqBody);
+    return appValidator.validateRequiredFieldsWithoutCustomization(userValidator, requiredFields, reqBody);
 };
 
 const userValidator = (field, value) => {
@@ -156,10 +152,22 @@ const userValidator = (field, value) => {
             message
         };
     }
+
+    if (field === 'following_id') {
+        const isValid = validator.isUUID(value, '4') && !validator.isEmpty(value);
+        const message = isValid ? null : "Field 'following_id' is invalid, must be a valid v4 uuid.";
+        return {
+            isValid,
+            field,
+            message
+        };
+    }
 };
 
 module.exports = {
     validateSignUpReqBody,
     validateSignInReqBody,
+    validateFollowReqBody,
+    validateUnfollowReqBody,
     validateEditProfileReqBody
 };

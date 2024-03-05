@@ -45,6 +45,12 @@ const signUp = async (req, res, next) => {
             respBody.http_status_code = httpStatusCodes.StatusCodes.BAD_REQUEST;
             respBody.application_specific_status_code = userConstants.INVALID_SIGN_UP_REQ_BODY;
             respBody.result = reqBodyValidationResult.result;
+
+            if (file != undefined) {
+                const userUploadsDir = `uploads/user/${reqBody.avatar_url.split('/')[2]}`;
+                await fs.promises.rm(userUploadsDir, { recursive: true, force: false });
+            }
+
             return res
                 .status(respBody.http_status_code)
                 .json(respBody);
@@ -215,6 +221,177 @@ const signIn = async (req, res, next) => {
 };
 
 /**
+ * Function for user to follow another user
+ * @param {express.Request} req 
+ * @param {express.Response} res 
+ * @param {express.NextFunction} next 
+ * @returns
+ */
+const follow = async (req, res, next) => {
+    try {
+        // Prepare default response body
+        const respBody = {
+            message: 'Success follow.',
+            http_status_code: httpStatusCodes.StatusCodes.OK,
+            application_specific_status_code: appConstants.SUCCESS,
+            result: null
+        };
+
+        // Retrieve request body, and decoded jwt from res.locals
+        const reqBody = req.body;
+        const decodedJwt = res.locals.decodedJwt;
+
+        // Validate request body
+        const reqBodyValidationResult = validator.validateFollowReqBody(reqBody);
+        if (!reqBodyValidationResult.isValid) {
+            respBody.message = 'Failed follow, invalid request body.';
+            respBody.http_status_code = httpStatusCodes.StatusCodes.BAD_REQUEST;
+            respBody.application_specific_status_code = userConstants.FOLLOW_FAILED_INVALID_REQ_BODY;
+            respBody.result = reqBodyValidationResult.result;
+            return res
+                .status(respBody.http_status_code)
+                .json(respBody);
+        }
+
+        // Prevent user from following themselves
+        if (decodedJwt.user_id === reqBody.following_id) {
+            respBody.message = "Failed follow, can't follow own account.";
+            respBody.http_status_code = httpStatusCodes.StatusCodes.OK;
+            respBody.application_specific_status_code = userConstants.FOLLOW_FAILED_SELF_FOLLOW;
+            return res
+                .status(respBody.http_status_code)
+                .json(respBody);
+        }
+
+        // Do follow logic
+        const taskTag = 'follow';
+        const result = await db.task(taskTag, async (t) => {
+            // Check if user to be followed is already registered
+            const user = await t.oneOrNone(
+                `SELECT * FROM public.user WHERE user_id = $1`,
+                reqBody.following_id
+            );
+            if (user == null) {
+                return userConstants.FOLLOW_FAILED_USER_NOT_REGISTERED;
+            }
+
+            await t.none(
+                `INSERT INTO public.follower (user_id, following_id) VALUES ($1,$2) ON CONFLICT (user_id, following_id) DO NOTHING`,
+                [
+                    decodedJwt.user_id,
+                    reqBody.following_id
+                ]
+            );
+
+            return appConstants.SUCCESS;
+        });
+
+        respBody.http_status_code = httpStatusCodes.StatusCodes.OK;
+        respBody.application_specific_status_code = result;
+
+        if (result !== appConstants.SUCCESS) {
+            if (result === userConstants.FOLLOW_FAILED_USER_NOT_REGISTERED) {
+                respBody.message = 'Failed follow, user with the specified credential is not registered.';
+            }
+
+            logger.info(`Task ${taskTag} incomplete, user with id of ${decodedJwt.user_id} might not be following the user with id of ${reqBody.following_id}`);
+        } else {
+            logger.info(`Task ${taskTag} complete, success follow user with id of ${reqBody.following_id} for user with id of ${decodedJwt.user_id}`);
+        }
+
+        return res
+            .status(respBody.http_status_code)
+            .json(respBody);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+/**
+ * Function for user to unfollow another user
+ * @param {express.Request} req 
+ * @param {express.Response} res 
+ * @param {express.NextFunction} next 
+ * @returns
+ */
+const unfollow = async (req, res, next) => {
+    try {
+        // Prepare default response body
+        const respBody = {
+            message: 'Success unfollow.',
+            http_status_code: httpStatusCodes.StatusCodes.OK,
+            application_specific_status_code: appConstants.SUCCESS,
+            result: null
+        };
+
+        // Retrieve request body, and decoded jwt from res.locals
+        const reqBody = req.body;
+        const decodedJwt = res.locals.decodedJwt;
+
+        // Validate request body
+        const reqBodyValidationResult = validator.validateUnfollowReqBody(reqBody);
+        if (!reqBodyValidationResult.isValid) {
+            respBody.message = 'Failed unfollow, invalid request body.';
+            respBody.http_status_code = httpStatusCodes.StatusCodes.BAD_REQUEST;
+            respBody.application_specific_status_code = userConstants.UNFOLLOW_FAILED_INVALID_REQ_BODY;
+            respBody.result = reqBodyValidationResult.result;
+            return res
+                .status(respBody.http_status_code)
+                .json(respBody);
+        }
+
+        // Prevent user from unfollowing themselves
+        if (decodedJwt.user_id === reqBody.following_id) {
+            respBody.message = "Failed unfollow, can't unfollow own account.";
+            respBody.http_status_code = httpStatusCodes.StatusCodes.OK;
+            respBody.application_specific_status_code = userConstants.UNFOLLOW_FAILED_SELF_UNFOLLOW;
+            return res
+                .status(respBody.http_status_code)
+                .json(respBody);
+        }
+
+        // Do unfollow logic
+        const taskTag = 'unfollow';
+        const result = await db.task(taskTag, async (t) => {
+            // Check if user to be unfollowed is already registered
+            const user = await t.oneOrNone(
+                `SELECT * FROM public.user WHERE user_id = $1`,
+                reqBody.following_id
+            );
+            if (user == null) {
+                return userConstants.UNFOLLOW_FAILED_USER_NOT_REGISTERED;
+            }
+
+            await t.none(
+                `DELETE FROM public.follower WHERE following_id = $1`,
+                reqBody.following_id
+            );
+
+            return appConstants.SUCCESS;
+        });
+
+        respBody.http_status_code = httpStatusCodes.StatusCodes.OK;
+        respBody.application_specific_status_code = result;
+
+        if (result !== appConstants.SUCCESS) {
+            if (result === userConstants.UNFOLLOW_FAILED_USER_NOT_REGISTERED) {
+                respBody.message = 'Failed unfollow, user with the specified credential is not registered.';
+            }
+
+            logger.info(`Task ${taskTag} incomplete, user with id of ${decodedJwt.user_id} might not be unfollowing the user with id of ${reqBody.following_id}`);
+        } else {
+            logger.info(`Task ${taskTag} complete, success unfollow user with id of ${reqBody.following_id} for user with id of ${decodedJwt.user_id}`);
+        }
+
+        return res
+            .status(respBody.http_status_code)
+            .json(respBody);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+/**
  * Function to get user profile
  * @param {express.Request} req 
  * @param {express.Response} res 
@@ -246,6 +423,8 @@ const getProfile = async (req, res, next) => {
                 }
             };
         }
+
+        logger.info(`Task ${taskTag} complete`);
 
         return res
             .status(respBody.http_status_code)
@@ -308,6 +487,8 @@ const editProfile = async (req, res, next) => {
             return appConstants.SUCCESS;
         });
 
+        logger.info(`Task ${taskTag} complete`);
+
         return res
             .status(respBody.http_status_code)
             .json(respBody);
@@ -319,6 +500,8 @@ const editProfile = async (req, res, next) => {
 module.exports = {
     signUp,
     signIn,
+    follow,
+    unfollow,
     getProfile,
     editProfile
 }; 
