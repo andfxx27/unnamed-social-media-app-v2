@@ -363,8 +363,11 @@ const unfollow = async (req, res, next) => {
             }
 
             await t.none(
-                `DELETE FROM public.follower WHERE following_id = $1`,
-                reqBody.following_id
+                `DELETE FROM public.follower WHERE user_id = $1 AND following_id = $2`,
+                [
+                    decodedJwt.user_id,
+                    reqBody.following_id
+                ]
             );
 
             return appConstants.SUCCESS;
