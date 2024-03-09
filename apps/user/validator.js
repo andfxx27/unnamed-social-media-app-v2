@@ -58,22 +58,6 @@ const validateSignInReqBody = (reqBody) => {
     return reqBodyValidationResult;
 };
 
-const validateFollowReqBody = (reqBody) => {
-    const requiredFields = [
-        'following_id'
-    ];
-
-    return appValidator.validateRequiredFieldsWithoutCustomization(userValidator, requiredFields, reqBody);
-};
-
-const validateUnfollowReqBody = (reqBody) => {
-    const requiredFields = [
-        'following_id'
-    ];
-
-    return appValidator.validateRequiredFieldsWithoutCustomization(userValidator, requiredFields, reqBody);
-};
-
 const validateEditProfileReqBody = (reqBody) => {
     const requiredFields = [
         'first_name',
@@ -152,22 +136,10 @@ const userValidator = (field, value) => {
             message
         };
     }
-
-    if (field === 'following_id') {
-        const isValid = validator.isUUID(value, '4') && !validator.isEmpty(value);
-        const message = isValid ? null : "Field 'following_id' is invalid, must be a valid v4 uuid.";
-        return {
-            isValid,
-            field,
-            message
-        };
-    }
 };
 
 module.exports = {
     validateSignUpReqBody,
     validateSignInReqBody,
-    validateFollowReqBody,
-    validateUnfollowReqBody,
     validateEditProfileReqBody
 };

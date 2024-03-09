@@ -7,9 +7,6 @@ const controller = require('./controller');
 router.post('/sign-up', multerMiddleware.userSignUpFileUploadMiddleware.single('avatar'), controller.signUp);
 router.post('/sign-in', controller.signIn);
 
-router.post('/:userId/followers', auth.authMiddleware, controller.follow);
-router.delete('/:userId/followers', auth.authMiddleware, controller.unfollow);
-
 router.get('/:userId/profile', controller.getProfile);
 router.patch('/:userId/profile', auth.authMiddleware, multerMiddleware.userEditProfileFileUploadMiddleware.single('avatar'), controller.editProfile);
 

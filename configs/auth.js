@@ -108,6 +108,7 @@ const authMiddleware = async (req, res, next) => {
 
         return next();
     } catch (error) {
+        console.log('Error');
         return next(error);
     }
 };
