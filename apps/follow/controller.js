@@ -92,9 +92,10 @@ const follow = async (req, res, next) => {
 };
 
 /**
- * @todo Add pagination
+ * @todo 
+ * Add pagination
  * 
- * Function to get certain user's follower(s)
+ * @description Function to get certain user's follower(s)
  * @param {express.Request} req 
  * @param {express.Response} res 
  * @param {express.NextFunction} next 

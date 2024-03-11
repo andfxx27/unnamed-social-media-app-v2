@@ -1,7 +1,6 @@
-const fs = require('fs');
-
 const bcrypt = require('bcrypt');
 const express = require('express');
+const fs = require('fs');
 const httpStatusCodes = require('http-status-codes');
 const uuid = require('uuid');
 
@@ -26,7 +25,7 @@ const signUp = async (req, res, next) => {
         const respBody = httpResponses.createDefaultResponseBody();
         respBody.message = 'Success sign up';
 
-        // Retrieve request body & file
+        // Retrieve request body and file
         const reqBody = req.body;
         const file = req.file;
 
@@ -117,6 +116,8 @@ const signUp = async (req, res, next) => {
             const userUploadsDir = `uploads/user/${userId}`;
             await fs.promises.rm(userUploadsDir, { recursive: true, force: false });
             logger.info(`Task ${taskTag} incomplete, success deleting ${userUploadsDir} directory`);
+        } else {
+            logger.info(`Task ${taskTag} complete`);
         }
 
         return res
@@ -227,12 +228,8 @@ const signIn = async (req, res, next) => {
 const getProfile = async (req, res, next) => {
     try {
         // Prepare default response body
-        const respBody = {
-            message: 'Success get profile',
-            http_status_code: httpStatusCodes.StatusCodes.OK,
-            application_specific_status_code: appConstants.SUCCESS,
-            result: null
-        };
+        const respBody = httpResponses.createDefaultResponseBody();
+        respBody.message = 'Success get profile.';
 
         // Do get profile logic
         const taskTag = 'getProfile';
@@ -270,22 +267,28 @@ const getProfile = async (req, res, next) => {
 const editProfile = async (req, res, next) => {
     try {
         // Prepare default response body
-        const respBody = {
-            message: 'Success edit profile',
-            http_status_code: httpStatusCodes.StatusCodes.OK,
-            application_specific_status_code: appConstants.SUCCESS,
-            result: null
-        };
+        const respBody = httpResponses.createDefaultResponseBody();
+        respBody.message = 'Success edit profile.';
 
         // Retrieve request body, file, and decoded jwt from res.locals
         const reqBody = req.body;
         const file = req.file;
         const decodedJwt = res.locals.decodedJwt;
 
+        // Validate file
+        if (file == undefined || file == null) {
+            respBody.message = "Failed edit profile, field 'avatar' might be invalid.";
+            respBody.http_status_code = httpStatusCodes.StatusCodes.BAD_REQUEST;
+            respBody.application_specific_status_code = userConstants.INVALID_EDIT_PROFILE_REQ_BODY;
+            return res
+                .status(respBody.http_status_code)
+                .json(respBody);
+        }
+
         // Validate request body
         const reqBodyValidationResult = validator.validateEditProfileReqBody(reqBody);
         if (!reqBodyValidationResult.isValid) {
-            respBody.message = 'Failed edit profile, invalid request body';
+            respBody.message = 'Failed edit profile, invalid request body.';
             respBody.http_status_code = httpStatusCodes.StatusCodes.BAD_REQUEST;
             respBody.application_specific_status_code = userConstants.INVALID_EDIT_PROFILE_REQ_BODY;
             respBody.result = reqBodyValidationResult.result;

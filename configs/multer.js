@@ -2,10 +2,14 @@ const fs = require('fs');
 const multer = require('multer');
 const uuid = require('uuid');
 
-const fileWhitelist = [
+const imageFileWhitelist = [
     'image/png',
     'image/jpeg',
     'image/jpg'
+];
+
+const videoFileWhitelist = [
+    'video/mp4'
 ];
 
 const generateUserAvatarFileName = (file) => {
@@ -15,6 +19,7 @@ const generateUserAvatarFileName = (file) => {
     return finalFileName;
 };
 
+// File upload storage
 const userSignUpFileUploadStorage = multer.diskStorage({
     destination: async (req, file, callback) => {
         // Generate user id here for later use
@@ -37,10 +42,13 @@ const userSignUpFileUploadStorage = multer.diskStorage({
 
 const userEditProfileFileUploadStorage = multer.memoryStorage();
 
+const userCreatePostFileUploadStorage = multer.memoryStorage();
+
+// File upload middleware
 const userSignUpFileUploadMiddleware = multer({
     storage: userSignUpFileUploadStorage,
     fileFilter: (req, file, cb) => {
-        if (!fileWhitelist.includes(file.mimetype)) {
+        if (!imageFileWhitelist.includes(file.mimetype)) {
             return cb(new Error('Client error, file is not allowed'));
         }
 
@@ -51,7 +59,18 @@ const userSignUpFileUploadMiddleware = multer({
 const userEditProfileFileUploadMiddleware = multer({
     storage: userEditProfileFileUploadStorage,
     fileFilter: (req, file, cb) => {
-        if (!fileWhitelist.includes(file.mimetype)) {
+        if (!imageFileWhitelist.includes(file.mimetype)) {
+            return cb(new Error('Client error, file is not allowed'));
+        }
+
+        cb(null, true);
+    }
+});
+
+const userCreatePostFileUploadMiddleware = multer({
+    storage: userCreatePostFileUploadStorage,
+    fileFilter: (req, file, cb) => {
+        if (!videoFileWhitelist.includes(file.mimetype) && !imageFileWhitelist.includes(file.mimetype)) {
             return cb(new Error('Client error, file is not allowed'));
         }
 
@@ -61,5 +80,6 @@ const userEditProfileFileUploadMiddleware = multer({
 
 module.exports = {
     userSignUpFileUploadMiddleware,
-    userEditProfileFileUploadMiddleware
+    userEditProfileFileUploadMiddleware,
+    userCreatePostFileUploadMiddleware
 };

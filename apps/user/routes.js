@@ -1,8 +1,8 @@
 const router = require('express').Router();
 
 const auth = require('./../../configs/auth');
-const multerMiddleware = require('./../../configs/multer');
 const controller = require('./controller');
+const multerMiddleware = require('./../../configs/multer');
 
 router.post('/sign-up', multerMiddleware.userSignUpFileUploadMiddleware.single('avatar'), controller.signUp);
 router.post('/sign-in', controller.signIn);
